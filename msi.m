@@ -199,7 +199,6 @@ Begin
 
 End;
 
--- Parin
 Procedure RemoveFromSharersCopyList(n:Node);
 Begin
   if MultiSetCount(i:sharers_copy, sharers_copy[i] = n) > 0
@@ -263,21 +262,11 @@ Begin
           AddToSharersList(msg.src);
 
         case GetM:
-        -- Send Invalidation request to sharers
-          -- CHECK: What are we waiting for? I think wait for InvAckAll
-          -- if (is_source = 1 & cnt_sharers = 1) then     
-          --   Send(GetMAck, msg.src, HomeType, VC0, HomeNode.val);
-          --   HomeNode.owner := msg.src;
-          --   HomeNode.state := H_M;
-          --   undefine HomeNode.sharers;
-          -- else
 
-            Send(GetMAck, msg.src, HomeType, VC0, HomeNode.val);
-            CopySharersList(msg.src);            
-            SendInvReqToSharers(msg.src);
-            -- MultiSetCount_H(H_MMD, H_SMA);
-            HomeNode.state := H_SMA;
-          --endif;
+          Send(GetMAck, msg.src, HomeType, VC0, HomeNode.val);
+          CopySharersList(msg.src);            
+          SendInvReqToSharers(msg.src);
+          HomeNode.state := H_SMA;
 
         case PutS:
           -- Send PutAck, check number of sharers to determine if I or S
@@ -296,8 +285,6 @@ Begin
               MultiSetCount_H_PutS(H_I, H_S); -- Checks if 1 sharer -> I, else -> S
               RemoveFromSharersList(msg.src);
           endif;
-          -- MultiSetCount_H_PutS(H_I, H_S); -- Checks if 1 sharer -> I, else -> S
-          -- RemoveFromSharersList(msg.src);
           Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);            
 
         else
@@ -315,10 +302,6 @@ Begin
         case GetS:
           Send(FwdGetS, HomeNode.owner, msg.src, VC2, UNDEFINED);
           to_be_sharer := msg.src;    -- check\
-          -- AddToSharersList(to_be_sharer);
-          -- AddToSharersList(HomeNode.owner);
-          -- undefine to_be_sharer;
-          -- undefine HomeNode.owner;
           HomeNode.state := H_MSD; 
 
         case GetM:
@@ -330,7 +313,6 @@ Begin
           Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
 
         case PutM:
-          -- assert (msg.src = HomeNode.owner) "Writeback from non-owner";
           if (msg.src = HomeNode.owner) then
             HomeNode.val := msg.val;
             Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
@@ -358,19 +340,10 @@ Begin
           msg_processed := false; -- stall message in InBox
 
         case PutS:
-          -- RemoveFromSharersList(msg.src);
-          -- Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
           msg_processed := false; -- stall message in InBox
 
         case PutM:
-          -- Assert (msg.src != HomeNode.owner) 
-          -- "Can't receive PutM+data from Owner";
-          -- -- PutMNonOwner
-          -- RemoveFromSharersList(msg.src);
-          -- Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
-
           msg_processed := false; -- stall message in InBox
-
 
         case GetSAck: -- Comes from Processor?
           AddToSharersList(to_be_sharer);
@@ -465,6 +438,7 @@ Begin
           msg_processed := false;
 
       elsif (msg.mtype = GetSAck) then
+          pv := msg.val;
           ps := P_S;
 
       else
@@ -478,6 +452,7 @@ Begin
 
       elsif (msg.mtype = GetMAck) then
           MultiSetCount_P(p, P_M, P_IMA, msg); -- Data from Owner could be problem
+          pv := msg.val;
 
       elsif (msg.mtype = InvAck) then
         RemoveFromSharersCopyList(msg.src)
@@ -502,6 +477,7 @@ Begin
     case P_S:
       if (msg.mtype = Inv) then
           Send(InvAck, msg.src, p, VC0, UNDEFINED);
+          undefine pv;
           ps := P_I;
 
       else
@@ -519,6 +495,7 @@ Begin
 
       elsif (msg.mtype = GetMAck) then
         MultiSetCount_P(p, P_M, P_SMA, msg); -- Data from Owner could be problem
+        pv := msg.val;
 
       elsif (msg.mtype = InvAck) then
         RemoveFromSharersCopyList(msg.src);
@@ -548,6 +525,7 @@ Begin
       elsif (msg.mtype = FwdGetM) then
         Send(GetMAck, msg.src, p, VC0, pv);
         Send(GetMAck, HomeType, p, VC0, pv);
+        undefine pv;
         ps := P_I;
       
       else
@@ -566,6 +544,7 @@ Begin
         ps := P_IIA;
 
       elsif (msg.mtype = PutAck) then
+        undefine pv;
         ps := P_I;
 
       else
@@ -578,6 +557,7 @@ Begin
         ps := P_IIA;
 
       elsif (msg.mtype = PutAck) then
+        undefine pv;
         ps := P_I;
 
       else
@@ -586,6 +566,7 @@ Begin
       
     case P_IIA:
       if (msg.mtype = PutAck) then
+        undefine pv;
         ps := P_I;
 
       else
@@ -730,10 +711,13 @@ startstate
   -- home node initialization
   HomeNode.state := H_I;
   undefine HomeNode.sharers;
-
   undefine HomeNode.owner;
-  HomeNode.val := v;
+  undefine HomeNode.val;
 	endfor;
+
+  undefine to_be_owner;
+  undefine to_be_sharer;
+  undefine sharers_copy;
 	undefine LastWrite;
   
   -- processor initialization
@@ -751,54 +735,59 @@ endstartstate;
 -- Invariants
 ----------------------------------------------------------------------
 
--- invariant "Invalid implies empty owner"
---   HomeNode.state = H_I
---     ->
---       IsUndefined(HomeNode.owner);
+invariant "Invalid implies empty owner"
+  HomeNode.state = H_I
+    ->
+      IsUndefined(HomeNode.owner);
 
--- invariant "value in memory matches value of last write, when invalid"
---      HomeNode.state = H_I
---     ->
--- 			HomeNode.val = LastWrite;
+invariant "value is undefined while invalid"
+  Forall n : Proc Do	
+     Procs[n].state = P_I
+    ->
+			IsUndefined(Procs[n].val)
+	end;
 
--- invariant "values in valid state match last write"
---   Forall n : Proc Do	
---      Procs[n].state = P_M
---     ->
--- 			Procs[n].val = LastWrite --LastWrite is updated whenever a new value is created 
--- 	end;
+
+invariant "value in memory matches value of last write, when invalid"
+     HomeNode.state = H_I
+    ->
+			HomeNode.val = LastWrite;
+
+invariant "values in valid state match last write"
+  Forall n : Proc Do	
+     Procs[n].state = P_M
+    ->
+			Procs[n].val = LastWrite --LastWrite is updated whenever a new value is created 
+	end;
 	
--- invariant "value is undefined while invalid"
---   Forall n : Proc Do	
---      Procs[n].state = P_I
---     ->
--- 			IsUndefined(Procs[n].val)
--- 	end;
+
 	
-/*	
+	
 -- Here are some invariants that are helpful for validating shared state.
 
 invariant "modified implies empty sharers list"
-  HomeNode.state = H_Modified
+  HomeNode.state = H_M
     ->
       MultiSetCount(i:HomeNode.sharers, true) = 0;
 
 invariant "Invalid implies empty sharer list"
-  HomeNode.state = H_Invalid
+  HomeNode.state = H_I
     ->
       MultiSetCount(i:HomeNode.sharers, true) = 0;
 
+invariant "values in shared state match memory"
+  Forall n : Proc Do	
+     HomeNode.state = H_S & Procs[n].state = P_S
+    ->
+			HomeNode.val = Procs[n].val
+	end;
+
+
 invariant "values in memory matches value of last write, when shared or invalid"
   Forall n : Proc Do	
-     HomeNode.state = H_Shared | HomeNode.state = H_Invalid
+     HomeNode.state = H_S | HomeNode.state = H_I
     ->
 			HomeNode.val = LastWrite
 	end;
 
-invariant "values in shared state match memory"
-  Forall n : Proc Do	
-     HomeNode.state = H_Shared & Procs[n].state = P_Shared
-    ->
-			HomeNode.val = Procs[n].val
-	end;
-*/	
+
