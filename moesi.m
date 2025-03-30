@@ -317,7 +317,12 @@ Begin
           Send(GetMAck, msg.src, HomeType, VC0, HomeNode.val);
           CopySharersList(msg.src);            
           SendInvReqToSharers(msg.src);
-          HomeNode.state := H_SMA;
+          if (cnt_sharers = 0) then
+            HomeNode.owner := msg.src;
+            HomeNode.state := H_M;
+          else
+            HomeNode.state := H_SMA;
+          endif;
         case PutS:
           -- Send PutAck, check number of sharers to determine if I or S
           if (IsSharer(msg.src)) then
@@ -433,7 +438,8 @@ Begin
             Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
           endif;
         case PutO:
-          msg_processed := false; -- is this correct??
+          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
+          -- msg_processed := false; -- is this correct??
         -- case MAck:
         --   HomeNode.state := H_M;
         else
@@ -459,8 +465,13 @@ Begin
             Send(FwdGetM, HomeNode.owner, msg.src, VC2, UNDEFINED);
             CopySharersList(msg.src);
             SendInvReqToSharers(msg.src);
-            HomeNode.state := H_OMA;
-            to_be_owner := msg.src;
+            if (cnt_sharers = 0) then
+              HomeNode.state := H_MMD;
+              to_be_owner := msg.src;
+            else
+              HomeNode.state := H_OMA;
+              to_be_owner := msg.src;
+            endif;
           endif;
         case PutS:
           if (IsSharer(msg.src)) then
@@ -487,7 +498,7 @@ Begin
             if (IsSharer(msg.src)) then
                 RemoveFromSharersList(msg.src);
             endif;
-            MultiSetCount_H(H_I, H_S);
+            -- MultiSetCount_H(H_I, H_S);
           endif;
           Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
         case PutE:
@@ -538,6 +549,8 @@ Begin
           HomeNode.owner := to_be_owner;
           undefine HomeNode.sharers;
           HomeNode.state := H_M;
+        case GetMAck:
+          HomeNode.state := H_OMA;
         else
           ErrorUnhandledMsg(msg, HomeType);
       endswitch;
@@ -784,7 +797,9 @@ Begin
           Send(GetSAck, HomeType, p, VC0, pv);
         case FwdGetM:
           Send(GetMAck, msg.src, p, VC0, pv);
-          -- Send(GetMAck, HomeType, p, VC0, pv); --cbw
+          if (cnt_sharers = 0) then
+            Send(GetMAck, HomeType, p, VC0, pv); --cbw
+          endif;
           undefine pv;
           ps := P_I;
         else
@@ -798,6 +813,9 @@ Begin
           Send(GetSAck, HomeType, p, VC0, pv);
         case FwdGetM:
           Send(GetMAck, msg.src, p, VC0, pv);
+          if (cnt_sharers = 0) then
+            Send(GetMAck, HomeType, p, VC0, UNDEFINED);
+          endif;
           -- Send(GetMAck, HomeType, p, VC0, pv); --wtf
           ps := P_IMAD;
         case GetMAck: --HomeNode needs to make copy of shrares list when it recieves a GetM when in H_O
@@ -834,7 +852,10 @@ Begin
           Send(GetSAck, HomeType, p, VC0, pv);
         case FwdGetM:
           Send(GetMAck, msg.src, p, VC0, pv);
-          -- Send(GetMAck, HomeType, p, VC0, pv); --cbw
+
+          if (cnt_sharers = 0) then
+            Send(GetMAck, HomeType, p, VC0, pv); --cbw
+          endif;
           ps := P_IIA;
         case PutAck:
           undefine pv;

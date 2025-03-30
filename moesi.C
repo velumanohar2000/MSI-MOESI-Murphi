@@ -2580,7 +2580,15 @@ case mu_GetM:
 mu_Send ( mu_GetMAck, mu_msg.mu_src, (int)mu_HomeType, mu_VC0, mu_HomeNode.mu_val );
 mu_CopySharersList ( mu_msg.mu_src );
 mu_SendInvReqToSharers ( mu_msg.mu_src );
+if ( (mu_cnt_sharers) == (0) )
+{
+mu_HomeNode.mu_owner = mu_msg.mu_src;
+mu_HomeNode.mu_state = mu_H_M;
+}
+else
+{
 mu_HomeNode.mu_state = mu_H_SMA;
+}
 break;
 case mu_PutS:
 if ( mu_IsSharer( mu_msg.mu_src ) )
@@ -2711,7 +2719,7 @@ mu_Send ( mu_PutAck, mu_msg.mu_src, (int)mu_HomeType, mu_VC2, mu_1_Value_undefin
 }
 break;
 case mu_PutO:
-mu_msg_processed = mu_false;
+mu_Send ( mu_PutAck, mu_msg.mu_src, (int)mu_HomeType, mu_VC2, mu_1_Value_undefined_var );
 break;
 default:
 mu_ErrorUnhandledMsg ( mu_msg, (int)mu_HomeType );
@@ -2738,8 +2746,16 @@ else
 mu_Send ( mu_FwdGetM, mu_HomeNode.mu_owner, mu_msg.mu_src, mu_VC2, mu_1_Value_undefined_var );
 mu_CopySharersList ( mu_msg.mu_src );
 mu_SendInvReqToSharers ( mu_msg.mu_src );
+if ( (mu_cnt_sharers) == (0) )
+{
+mu_HomeNode.mu_state = mu_H_MMD;
+mu_to_be_owner = mu_msg.mu_src;
+}
+else
+{
 mu_HomeNode.mu_state = mu_H_OMA;
 mu_to_be_owner = mu_msg.mu_src;
+}
 }
 break;
 case mu_PutS:
@@ -2775,7 +2791,6 @@ if ( mu_IsSharer( mu_msg.mu_src ) )
 {
 mu_RemoveFromSharersList ( mu_msg.mu_src );
 }
-mu_MultiSetCount_H ( mu_H_I, mu_H_S );
 }
 mu_Send ( mu_PutAck, mu_msg.mu_src, (int)mu_HomeType, mu_VC2, mu_1_Value_undefined_var );
 break;
@@ -2844,6 +2859,9 @@ else
   mu_HomeNode.mu_owner = mu_to_be_owner;
 mu_HomeNode.mu_sharers.undefine();
 mu_HomeNode.mu_state = mu_H_M;
+break;
+case mu_GetMAck:
+mu_HomeNode.mu_state = mu_H_OMA;
 break;
 default:
 mu_ErrorUnhandledMsg ( mu_msg, (int)mu_HomeType );
@@ -3171,6 +3189,10 @@ mu_Send ( mu_GetSAck, (int)mu_HomeType, (int)mu_p, mu_VC0, mu_pv );
 break;
 case mu_FwdGetM:
 mu_Send ( mu_GetMAck, mu_msg.mu_src, (int)mu_p, mu_VC0, mu_pv );
+if ( (mu_cnt_sharers) == (0) )
+{
+mu_Send ( mu_GetMAck, (int)mu_HomeType, (int)mu_p, mu_VC0, mu_pv );
+}
 mu_pv.undefine();
 mu_ps = mu_P_I;
 break;
@@ -3187,6 +3209,10 @@ mu_Send ( mu_GetSAck, (int)mu_HomeType, (int)mu_p, mu_VC0, mu_pv );
 break;
 case mu_FwdGetM:
 mu_Send ( mu_GetMAck, mu_msg.mu_src, (int)mu_p, mu_VC0, mu_pv );
+if ( (mu_cnt_sharers) == (0) )
+{
+mu_Send ( mu_GetMAck, (int)mu_HomeType, (int)mu_p, mu_VC0, mu_1_Value_undefined_var );
+}
 mu_ps = mu_P_IMAD;
 break;
 case mu_GetMAck:
@@ -3230,6 +3256,10 @@ mu_Send ( mu_GetSAck, (int)mu_HomeType, (int)mu_p, mu_VC0, mu_pv );
 break;
 case mu_FwdGetM:
 mu_Send ( mu_GetMAck, mu_msg.mu_src, (int)mu_p, mu_VC0, mu_pv );
+if ( (mu_cnt_sharers) == (0) )
+{
+mu_Send ( mu_GetMAck, (int)mu_HomeType, (int)mu_p, mu_VC0, mu_pv );
+}
 mu_ps = mu_P_IIA;
 break;
 case mu_PutAck:
