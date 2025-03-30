@@ -24,11 +24,11 @@ type
   Home: enum { HomeType };      -- need enumeration for IsMember calls
   Node: union { Home , Proc };
 
-  h_state: enum {H_I, H_S, H_M, H_E, -- stable states
-                 H_MSD, H_MMD, H_SMA, H_IE -- transient states
+  h_state: enum {H_I, H_S, H_M, H_E, H_O, -- stable states
+                 H_MSD, H_MMD, H_SMA, H_IE, H_MOD, H_OMA, H_OOD-- transient states
                 };
-  p_state: enum { P_I, P_S, P_M, P_E, -- stable states
-                  P_ISD, P_IMAD, P_IMA, P_SMAD, P_SMA, P_MIA, P_EIA, P_SIA, P_IIA --transient states
+  p_state: enum { P_I, P_S, P_M, P_E, P_O, -- stable states
+                  P_ISD, P_IMAD, P_IMA, P_SMAD, P_SMA, P_MIA, P_EIA, P_OMAC, P_OMA, P_OIA, P_SIA, P_IIA --transient states
   };
 
   VCType: VC0..NumVCs-1;
@@ -43,10 +43,12 @@ type
                      InvAck,
                      PutM,
                      PutE,
+                     PutO,
                      PutS,
                      PutAck,
                      InvAckAll,
                      EAck
+                    --  MAck
                     };
 
   Message:
@@ -83,6 +85,7 @@ var
   msg_processed: boolean;
   sharers_copy: multiset [ProcCount] of Node;
   to_be_owner: Node;
+  upgraded_to_m: boolean;
   to_be_sharer: Node;
   LastWrite: Value; -- Used to confirm that writes are not lost; this variable would not exist in real hardware
 
@@ -156,6 +159,7 @@ Begin
   --   Procs[p].state := p1;
   if (MultiSetCount(i:HomeNode.sharers, true) = 0) then
     Procs[p].state := p1;
+    upgraded_to_m := false;
     Send(EAck, HomeType, p, VC0, UNDEFINED);
   else
     Procs[p].state := p2;
@@ -197,7 +201,7 @@ Begin
   if (MultiSetCount(i:sharers_copy, true) = 0)
   then
     Procs[p].state := ps1;
-    if (msg.mtype = InvAck | (msg.mtype = GetMAck & MultiSetCount(i:HomeNode.sharers, true) != 0)) --& msg.vc = VC0))
+    if (msg.mtype = InvAck | (msg.mtype = GetMAck & MultiSetCount(i:HomeNode.sharers, true) != 0))
     then
       Send(InvAckAll, HomeType, p, VC0, UNDEFINED);
     endif;
@@ -271,6 +275,10 @@ Begin
           Assert (msg.src != HomeNode.owner) 
           "Can't receive PutE+data from Owner";
           Send(PutAck, msg.src, HomeType, VC2, UNDEFINED); 
+        case PutO:
+          Assert (msg.src != HomeNode.owner) 
+          "Can't receive PutO+data from Owner";
+          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED); 
         else
           ErrorUnhandledMsg(msg, HomeType);
       endswitch;
@@ -287,6 +295,10 @@ Begin
           msg_processed := false; 
         case PutE:
           msg_processed := false; 
+        case PutO:
+          msg_processed := false;   
+        -- case MAck:
+        --   msg_processed := false;      
         case EAck:
           HomeNode.owner := msg.src;
           HomeNode.state := H_E;
@@ -327,12 +339,21 @@ Begin
         case PutE:
           Assert (msg.src != HomeNode.owner) 
           "Can't receive PutE+data from Owner";
-          -- PutMNonOwner
+          -- PutENonOwner
           if (IsSharer(msg.src)) then
               RemoveFromSharersList(msg.src);
           endif;
           MultiSetCount_H(H_I, H_S);
-          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);            
+          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);  
+        case PutO:
+          Assert (msg.src != HomeNode.owner) 
+          "Can't receive PutO+data from Owner";
+          -- PutONonOwner
+          if (IsSharer(msg.src)) then
+              RemoveFromSharersList(msg.src);
+          endif;
+          MultiSetCount_H(H_I, H_S);
+          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);  
         else
           ErrorUnhandledMsg(msg, HomeType);
       endswitch;
@@ -345,7 +366,7 @@ Begin
         case GetS:
           Send(FwdGetS, HomeNode.owner, msg.src, VC2, UNDEFINED);
           to_be_sharer := msg.src;    
-          HomeNode.state := H_MSD; 
+          HomeNode.state := H_MOD; 
         case GetM:
           Send(FwdGetM, HomeNode.owner, msg.src, VC2, UNDEFINED); 
           to_be_owner := msg.src;    -- check
@@ -364,16 +385,29 @@ Begin
           endif;
         case PutE:
             Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
+        case PutO:
+            Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
         else
           ErrorUnhandledMsg(msg, HomeType);
       endswitch;
 
+    -- PutO stall???
     case H_E: 
       switch msg.mtype
         case GetS:
           Send(FwdGetS, HomeNode.owner, msg.src, VC2, UNDEFINED);
-          to_be_sharer := msg.src;    
-          HomeNode.state := H_MSD;
+          to_be_sharer := msg.src;
+          if (upgraded_to_m) then
+            HomeNode.state := H_MOD;
+            upgraded_to_m := false;
+          else
+            HomeNode.state := H_MSD;
+          endif;
+          -- if (msg.vc = VC1) then    -- this might cause deadlock
+          --   HomeNode.state := H_MSD;
+          -- else 
+          --   HomeNode.state := H_MOD;
+          -- endif;
         case GetM:
           Send(FwdGetM, HomeNode.owner, msg.src, VC2, UNDEFINED); 
           to_be_owner := msg.src;
@@ -398,10 +432,140 @@ Begin
           else 
             Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
           endif;
+        case PutO:
+          msg_processed := false; -- is this correct??
+        -- case MAck:
+        --   HomeNode.state := H_M;
         else
           ErrorUnhandledMsg(msg, HomeType);
       endswitch;
 
+    -- PutE stall???
+    case H_O:
+      switch msg.mtype
+        case GetS:
+          Send(FwdGetS, HomeNode.owner, msg.src, VC2, UNDEFINED);
+          HomeNode.state := H_OOD;
+          to_be_sharer := msg.src;
+        --  AddToSharersList(msg.src);   -- could be wrong not sure if this needs to be done in transient state 
+        case GetM:
+          if (msg.src = HomeNode.owner) then
+            Send(GetMAck, msg.src, HomeType, VC2, UNDEFINED);            
+            CopySharersList(msg.src);
+            SendInvReqToSharers(msg.src);
+            --MultiSetCount_H(H_M, H_SMA);
+            HomeNode.state := H_SMA;
+          else
+            Send(FwdGetM, HomeNode.owner, msg.src, VC2, UNDEFINED);
+            CopySharersList(msg.src);
+            SendInvReqToSharers(msg.src);
+            HomeNode.state := H_OMA;
+            to_be_owner := msg.src;
+          endif;
+        case PutS:
+          if (IsSharer(msg.src)) then
+              RemoveFromSharersList(msg.src);
+          endif;
+          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
+        case PutM: --check this not sure if correct
+          if (msg.src = HomeNode.owner) then
+            HomeNode.val := msg.val;
+            undefine HomeNode.owner;
+            HomeNode.state := H_S;
+          endif;
+          if (IsSharer(msg.src)) then
+              RemoveFromSharersList(msg.src);
+          endif;
+          -- MultiSetCount_H(H_I, H_S); could be wrong
+          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);   
+        case PutO:
+          if (msg.src = HomeNode.owner) then 
+            HomeNode.val := msg.val;
+            undefine HomeNode.owner;
+            HomeNode.state := H_S;
+          else 
+            if (IsSharer(msg.src)) then
+                RemoveFromSharersList(msg.src);
+            endif;
+            MultiSetCount_H(H_I, H_S);
+          endif;
+          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
+        case PutE:
+          Send(PutAck, msg.src, HomeType, VC2, UNDEFINED);
+          --msg_processed := false; -- is this correct?
+        else
+          ErrorUnhandledMsg(msg, HomeType);
+      endswitch;                                          
+
+    case H_OOD:
+      switch msg.mtype
+        case GetS:
+          msg_processed := false; 
+        case GetM:
+          msg_processed := false; 
+        case PutS:
+          msg_processed := false; 
+        case PutM:
+          msg_processed := false; 
+        case PutE:
+          msg_processed := false; 
+        case PutO:
+          msg_processed := false;           
+        case GetSAck: 
+          AddToSharersList(to_be_sharer); 
+          undefine to_be_sharer;
+          HomeNode.state := H_O; 
+        else
+          ErrorUnhandledMsg(msg, HomeType);
+      endswitch;
+
+
+    case H_OMA:
+      switch msg.mtype
+        case GetS:
+          msg_processed := false; 
+        case GetM:
+          msg_processed := false; 
+        case PutS:
+          msg_processed := false; 
+        case PutM:
+          msg_processed := false; 
+        case PutE:
+          msg_processed := false; 
+        case PutO:
+          msg_processed := false;           
+        case InvAckAll: 
+          HomeNode.owner := to_be_owner;
+          undefine HomeNode.sharers;
+          HomeNode.state := H_M;
+        else
+          ErrorUnhandledMsg(msg, HomeType);
+      endswitch;
+      
+          
+    case H_MOD: -- Same as book SD
+      switch msg.mtype
+
+        case GetS:
+          msg_processed := false; 
+        case GetM:
+          msg_processed := false; 
+        case PutS:
+          msg_processed := false; 
+        case PutM:
+          msg_processed := false; 
+        case PutE:
+          msg_processed := false; 
+        case PutO:
+          msg_processed := false; 
+        case GetSAck: 
+          AddToSharersList(to_be_sharer);
+          undefine to_be_sharer;
+          HomeNode.val := msg.val;
+          HomeNode.state := H_O;
+        else
+          ErrorUnhandledMsg(msg, HomeType);
+      endswitch;
 
     
     case H_MSD: -- Same as book SD
@@ -417,13 +581,23 @@ Begin
           msg_processed := false; 
         case PutE:
           msg_processed := false; 
+        case PutO:
+          msg_processed := false; 
         case GetSAck: 
-          AddToSharersList(to_be_sharer);
-          AddToSharersList(HomeNode.owner);
-          undefine to_be_sharer;
-          undefine HomeNode.owner;
-          HomeNode.val := msg.val;
-          HomeNode.state := H_S;
+          if (upgraded_to_m) then
+            AddToSharersList(to_be_sharer);
+            undefine to_be_sharer;
+            HomeNode.val := msg.val;
+            upgraded_to_m := false;
+            HomeNode.state := H_O;
+          else
+            AddToSharersList(to_be_sharer);
+            AddToSharersList(HomeNode.owner);
+            undefine to_be_sharer;
+            undefine HomeNode.owner;
+            HomeNode.val := msg.val;
+            HomeNode.state := H_S;
+          endif;
         else
           ErrorUnhandledMsg(msg, HomeType);
       endswitch;
@@ -440,12 +614,15 @@ Begin
           msg_processed := false; 
         case PutE:
           msg_processed := false; 
+        case PutO:
+          msg_processed := false;           
         case GetMAck:
           HomeNode.owner := to_be_owner; 
           HomeNode.state := H_M;
         else
           ErrorUnhandledMsg(msg, HomeType);
       endswitch;
+
     case H_SMA:
       switch msg.mtype
         case GetS:
@@ -458,6 +635,8 @@ Begin
           msg_processed := false; 
         case PutE:
           msg_processed := false;
+        case PutO:
+          msg_processed := false;           
         case InvAckAll:
           undefine HomeNode.sharers;
           HomeNode.owner := msg.src;
@@ -470,11 +649,14 @@ End;
 
 
 Procedure ProcReceive(msg:Message; p:Proc);
+var cnt_sharers:0..ProcCount;  -- for counting sharers
 Begin
   -- --  put "Receiving "; put msg.mtype; put " on VC"; put msg.vc; 
   -- --  put " at proc "; put p; put "\n";
 
   --   -- default to 'processing' message.  set to false otherwise
+  cnt_sharers := MultiSetCount(i:HomeNode.sharers, true);
+
   msg_processed := true;
 
   alias ps:Procs[p].state do
@@ -570,7 +752,7 @@ Begin
         case FwdGetS:
           Send(GetSAck, msg.src, p, VC0, pv);
           Send(GetSAck, HomeType, p, VC0, pv);
-          ps := P_S;
+          ps := P_O;
         case FwdGetM:
           Send(GetMAck, msg.src, p, VC0, pv);
           Send(GetMAck, HomeType, p, VC0, pv);
@@ -584,7 +766,7 @@ Begin
       switch msg.mtype
         case FwdGetS:
           Send(GetSAck, msg.src, p, VC0, pv);
-          Send(GetSAck, HomeType, p, VC0, pv);
+          Send(GetSAck, HomeType, p, VC0, pv); --this may cause deadlock
           ps := P_S;
         case FwdGetM: 
           Send(GetMAck, msg.src, p, VC0, pv);
@@ -593,14 +775,80 @@ Begin
           ps := P_I;
         else
           ErrorUnhandledMsg(msg, p);
-      endswitch         
+      endswitch  
+
+    case P_O:
+      switch msg.mtype
+        case FwdGetS:
+          Send(GetSAck, msg.src, p, VC0, pv);
+          Send(GetSAck, HomeType, p, VC0, pv);
+        case FwdGetM:
+          Send(GetMAck, msg.src, p, VC0, pv);
+          -- Send(GetMAck, HomeType, p, VC0, pv); --cbw
+          undefine pv;
+          ps := P_I;
+        else
+          ErrorUnhandledMsg(msg, p);
+      endswitch
+
+    case P_OMAC:
+      switch msg.mtype
+        case FwdGetS:
+          Send(GetSAck, msg.src, p, VC0, pv);
+          Send(GetSAck, HomeType, p, VC0, pv);
+        case FwdGetM:
+          Send(GetMAck, msg.src, p, VC0, pv);
+          -- Send(GetMAck, HomeType, p, VC0, pv); --wtf
+          ps := P_IMAD;
+        case GetMAck: --HomeNode needs to make copy of shrares list when it recieves a GetM when in H_O
+          MultiSetCount_P(p, P_M, P_OMA, msg);
+          if (cnt_sharers = 0) then
+            ps := P_M;
+            Send(InvAckAll, HomeType, p, VC0, UNDEFINED);
+          endif;
+          
+          -- pv := msg.val;
+        case InvAck:
+          RemoveFromSharersCopyList(msg.src);
+        else
+          ErrorUnhandledMsg(msg, p);
+      endswitch  
+
+    case P_OMA:
+      switch msg.mtype
+        case FwdGetS:
+          Send(GetSAck, msg.src, p, VC0, pv);
+        case FwdGetM:
+          msg_processed := false;
+        case InvAck:
+          RemoveFromSharersCopyList(msg.src);
+          MultiSetCount_P(p, P_M, P_OMA, msg);
+        else
+          ErrorUnhandledMsg(msg, p);
+      endswitch  
+
+    case P_OIA:
+      switch msg.mtype
+        case FwdGetS:
+          Send(GetSAck, msg.src, p, VC0, pv);
+          Send(GetSAck, HomeType, p, VC0, pv);
+        case FwdGetM:
+          Send(GetMAck, msg.src, p, VC0, pv);
+          -- Send(GetMAck, HomeType, p, VC0, pv); --cbw
+          ps := P_IIA;
+        case PutAck:
+          undefine pv;
+          ps := P_I;
+        else
+          ErrorUnhandledMsg(msg, p);
+      endswitch  
 
     case P_MIA:
       switch msg.mtype
         case FwdGetS:
           Send(GetSAck, msg.src, p, VC0, pv);
           Send(GetSAck, HomeType, p, VC0, pv);
-          ps := P_SIA;
+          ps := P_OIA;
         case FwdGetM:
           Send(GetMAck, msg.src, p, VC0, pv);
           Send(GetMAck, HomeType, p, VC0, pv);
@@ -715,7 +963,7 @@ ruleset n:Proc Do
   rule "Replacement - from P_M"
     (p.state = P_M)
     ==>
-    Send(PutM, HomeType, n, VC1, p.val); -- Send Processor data for PutM?
+    Send(PutM, HomeType, n, VC1, p.val);
     p.state := P_MIA;
   endrule;
 
@@ -726,6 +974,7 @@ ruleset n:Proc Do
   rule "Store new value - from P_E"
     (p.state = P_E)
     ==>
+    upgraded_to_m := true;
     p.state := P_M;
   endrule;
 
@@ -735,10 +984,24 @@ ruleset n:Proc Do
     Send(PutE, HomeType, n, VC1, UNDEFINED);
     p.state := P_EIA;
   endrule;
+----------------------------------------------------------------------
+-- P_O
+  rule "Store new value - from P_O"
+    (p.state = P_O)
+    ==>
+    Send(GetM, HomeType, n, VC1, UNDEFINED);
+    p.state := P_OMAC;
+  endrule;
 
+  rule "Replacement - from P_O"
+    (p.state = P_O)
+    ==>
+    Send(PutO, HomeType, n, VC1, p.val);
+    p.state := P_OIA;
+  endrule;
+----------------------------------------------------------------------
   endalias;
 endruleset;
-----------------------------------------------------------------------
 
 -- Message delivery rules
 ruleset n:Node do
@@ -810,6 +1073,7 @@ startstate
   undefine HomeNode.val;
 	endfor;
 
+  upgraded_to_m := false;
   undefine to_be_owner;
   undefine to_be_sharer;
   undefine sharers_copy;
