@@ -760,8 +760,6 @@ invariant "values in valid state match last write"
 			Procs[n].val = LastWrite --LastWrite is updated whenever a new value is created 
 	end;
 	
-
-	
 	
 -- Here are some invariants that are helpful for validating shared state.
 
@@ -789,5 +787,3 @@ invariant "values in memory matches value of last write, when shared or invalid"
     ->
 			HomeNode.val = LastWrite
 	end;
-
-

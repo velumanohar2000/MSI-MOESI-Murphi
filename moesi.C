@@ -4489,7 +4489,7 @@ unsigned short StartStateManager::numstartstates = 1;
 /********************
   Invariant records
  ********************/
-int mu__invariant_31() // Invariant "values in memory matches value of last write, when shared or invalid"
+int mu__invariant_31() // Invariant "values in shared state match memory"
 {
 bool mu__quant32; 
 mu__quant32 = TRUE;
@@ -4497,13 +4497,13 @@ mu__quant32 = TRUE;
 for(int mu_n = 1; mu_n <= 3; mu_n++) {
 bool mu__boolexpr33;
 bool mu__boolexpr34;
-  if ((mu_HomeNode.mu_state) == (mu_H_S)) mu__boolexpr34 = TRUE ;
+  if (!((mu_HomeNode.mu_state) == (mu_H_E))) mu__boolexpr34 = FALSE ;
   else {
-  mu__boolexpr34 = ((mu_HomeNode.mu_state) == (mu_H_I)) ; 
+  mu__boolexpr34 = ((mu_Procs[mu_n].mu_state) == (mu_P_E)) ; 
 }
   if (!(mu__boolexpr34)) mu__boolexpr33 = TRUE ;
   else {
-  mu__boolexpr33 = ((mu_HomeNode.mu_val) == (mu_LastWrite)) ; 
+  mu__boolexpr33 = ((mu_HomeNode.mu_val) == (mu_Procs[mu_n].mu_val)) ; 
 }
 if ( !(mu__boolexpr33) )
   { mu__quant32 = FALSE; break; }
@@ -4512,7 +4512,7 @@ if ( !(mu__boolexpr33) )
 return mu__quant32;
 };
 
-bool mu__condition_35() // Condition for Rule "values in memory matches value of last write, when shared or invalid"
+bool mu__condition_35() // Condition for Rule "values in shared state match memory"
 {
   return mu__invariant_31( );
 }
@@ -4527,7 +4527,7 @@ mu__quant37 = TRUE;
 for(int mu_n = 1; mu_n <= 3; mu_n++) {
 bool mu__boolexpr38;
 bool mu__boolexpr39;
-  if (!((mu_HomeNode.mu_state) == (mu_H_S))) mu__boolexpr39 = FALSE ;
+  if (!((mu_HomeNode.mu_state) == (mu_H_O))) mu__boolexpr39 = FALSE ;
   else {
   mu__boolexpr39 = ((mu_Procs[mu_n].mu_state) == (mu_P_S)) ; 
 }
@@ -4549,74 +4549,62 @@ bool mu__condition_40() // Condition for Rule "values in shared state match memo
 
 /**** end rule declaration ****/
 
-int mu__invariant_41() // Invariant "Invalid implies empty sharer list"
+int mu__invariant_41() // Invariant "values in memory matches value of last write, when in P_E"
 {
-bool mu__boolexpr42;
-  if (!((mu_HomeNode.mu_state) == (mu_H_I))) mu__boolexpr42 = TRUE ;
+bool mu__quant42; 
+mu__quant42 = TRUE;
+{
+for(int mu_n = 1; mu_n <= 3; mu_n++) {
+bool mu__boolexpr43;
+  if (!((mu_Procs[mu_n].mu_state) == (mu_P_E))) mu__boolexpr43 = TRUE ;
   else {
-/*** begin multisetcount 16 declaration ***/
-  int mu__intexpr43 = 0;
-  {
-  mu_1__type_0_id mu_i;
-  for (mu_i = 0; ; mu_i=mu_i+1)
-    {
-      if (mu_HomeNode.mu_sharers.valid[(int)mu_i].value())
-        {
-          if ( mu_true ) mu__intexpr43++;
-        }
-      if (mu_i == 3-1) break;
-    }
-  }
-/*** end multisetcount 16 declaration ***/
-  mu__boolexpr42 = ((mu__intexpr43) == (0)) ; 
+  mu__boolexpr43 = ((mu_HomeNode.mu_val) == (mu_LastWrite)) ; 
 }
-return mu__boolexpr42;
+if ( !(mu__boolexpr43) )
+  { mu__quant42 = FALSE; break; }
+};
+};
+return mu__quant42;
 };
 
-bool mu__condition_44() // Condition for Rule "Invalid implies empty sharer list"
+bool mu__condition_44() // Condition for Rule "values in memory matches value of last write, when in P_E"
 {
   return mu__invariant_41( );
 }
 
 /**** end rule declaration ****/
 
-int mu__invariant_45() // Invariant "modified and exclusive implies empty sharers list"
+int mu__invariant_45() // Invariant "values in memory matches value of last write, when shared or invalid"
 {
-bool mu__boolexpr46;
+bool mu__quant46; 
+mu__quant46 = TRUE;
+{
+for(int mu_n = 1; mu_n <= 3; mu_n++) {
 bool mu__boolexpr47;
-  if ((mu_HomeNode.mu_state) == (mu_H_M)) mu__boolexpr47 = TRUE ;
+bool mu__boolexpr48;
+  if ((mu_HomeNode.mu_state) == (mu_H_S)) mu__boolexpr48 = TRUE ;
   else {
-  mu__boolexpr47 = ((mu_HomeNode.mu_state) == (mu_H_E)) ; 
+  mu__boolexpr48 = ((mu_HomeNode.mu_state) == (mu_H_I)) ; 
 }
-  if (!(mu__boolexpr47)) mu__boolexpr46 = TRUE ;
+  if (!(mu__boolexpr48)) mu__boolexpr47 = TRUE ;
   else {
-/*** begin multisetcount 15 declaration ***/
-  int mu__intexpr48 = 0;
-  {
-  mu_1__type_0_id mu_i;
-  for (mu_i = 0; ; mu_i=mu_i+1)
-    {
-      if (mu_HomeNode.mu_sharers.valid[(int)mu_i].value())
-        {
-          if ( mu_true ) mu__intexpr48++;
-        }
-      if (mu_i == 3-1) break;
-    }
-  }
-/*** end multisetcount 15 declaration ***/
-  mu__boolexpr46 = ((mu__intexpr48) == (0)) ; 
+  mu__boolexpr47 = ((mu_HomeNode.mu_val) == (mu_LastWrite)) ; 
 }
-return mu__boolexpr46;
+if ( !(mu__boolexpr47) )
+  { mu__quant46 = FALSE; break; }
+};
+};
+return mu__quant46;
 };
 
-bool mu__condition_49() // Condition for Rule "modified and exclusive implies empty sharers list"
+bool mu__condition_49() // Condition for Rule "values in memory matches value of last write, when shared or invalid"
 {
   return mu__invariant_45( );
 }
 
 /**** end rule declaration ****/
 
-int mu__invariant_50() // Invariant "values in valid state match last write"
+int mu__invariant_50() // Invariant "values in shared state match memory"
 {
 bool mu__quant51; 
 mu__quant51 = TRUE;
@@ -4624,13 +4612,13 @@ mu__quant51 = TRUE;
 for(int mu_n = 1; mu_n <= 3; mu_n++) {
 bool mu__boolexpr52;
 bool mu__boolexpr53;
-  if ((mu_Procs[mu_n].mu_state) == (mu_P_M)) mu__boolexpr53 = TRUE ;
+  if (!((mu_HomeNode.mu_state) == (mu_H_S))) mu__boolexpr53 = FALSE ;
   else {
-  mu__boolexpr53 = ((mu_Procs[mu_n].mu_state) == (mu_P_E)) ; 
+  mu__boolexpr53 = ((mu_Procs[mu_n].mu_state) == (mu_P_S)) ; 
 }
   if (!(mu__boolexpr53)) mu__boolexpr52 = TRUE ;
   else {
-  mu__boolexpr52 = ((mu_Procs[mu_n].mu_val) == (mu_LastWrite)) ; 
+  mu__boolexpr52 = ((mu_HomeNode.mu_val) == (mu_Procs[mu_n].mu_val)) ; 
 }
 if ( !(mu__boolexpr52) )
   { mu__quant51 = FALSE; break; }
@@ -4639,83 +4627,183 @@ if ( !(mu__boolexpr52) )
 return mu__quant51;
 };
 
-bool mu__condition_54() // Condition for Rule "values in valid state match last write"
+bool mu__condition_54() // Condition for Rule "values in shared state match memory"
 {
   return mu__invariant_50( );
 }
 
 /**** end rule declaration ****/
 
-int mu__invariant_55() // Invariant "value in memory matches value of last write, when invalid"
+int mu__invariant_55() // Invariant "Invalid implies empty sharer list"
 {
 bool mu__boolexpr56;
   if (!((mu_HomeNode.mu_state) == (mu_H_I))) mu__boolexpr56 = TRUE ;
   else {
-  mu__boolexpr56 = ((mu_HomeNode.mu_val) == (mu_LastWrite)) ; 
+/*** begin multisetcount 16 declaration ***/
+  int mu__intexpr57 = 0;
+  {
+  mu_1__type_0_id mu_i;
+  for (mu_i = 0; ; mu_i=mu_i+1)
+    {
+      if (mu_HomeNode.mu_sharers.valid[(int)mu_i].value())
+        {
+          if ( mu_true ) mu__intexpr57++;
+        }
+      if (mu_i == 3-1) break;
+    }
+  }
+/*** end multisetcount 16 declaration ***/
+  mu__boolexpr56 = ((mu__intexpr57) == (0)) ; 
 }
 return mu__boolexpr56;
 };
 
-bool mu__condition_57() // Condition for Rule "value in memory matches value of last write, when invalid"
+bool mu__condition_58() // Condition for Rule "Invalid implies empty sharer list"
 {
   return mu__invariant_55( );
 }
 
 /**** end rule declaration ****/
 
-int mu__invariant_58() // Invariant "value is undefined while invalid"
+int mu__invariant_59() // Invariant "modified and exclusive implies empty sharers list"
 {
-bool mu__quant59; 
-mu__quant59 = TRUE;
-{
-for(int mu_n = 1; mu_n <= 3; mu_n++) {
 bool mu__boolexpr60;
-  if (!((mu_Procs[mu_n].mu_state) == (mu_P_I))) mu__boolexpr60 = TRUE ;
+bool mu__boolexpr61;
+  if ((mu_HomeNode.mu_state) == (mu_H_M)) mu__boolexpr61 = TRUE ;
   else {
-  mu__boolexpr60 = (mu_Procs[mu_n].mu_val.isundefined()) ; 
+  mu__boolexpr61 = ((mu_HomeNode.mu_state) == (mu_H_E)) ; 
 }
-if ( !(mu__boolexpr60) )
-  { mu__quant59 = FALSE; break; }
-};
-};
-return mu__quant59;
+  if (!(mu__boolexpr61)) mu__boolexpr60 = TRUE ;
+  else {
+/*** begin multisetcount 15 declaration ***/
+  int mu__intexpr62 = 0;
+  {
+  mu_1__type_0_id mu_i;
+  for (mu_i = 0; ; mu_i=mu_i+1)
+    {
+      if (mu_HomeNode.mu_sharers.valid[(int)mu_i].value())
+        {
+          if ( mu_true ) mu__intexpr62++;
+        }
+      if (mu_i == 3-1) break;
+    }
+  }
+/*** end multisetcount 15 declaration ***/
+  mu__boolexpr60 = ((mu__intexpr62) == (0)) ; 
+}
+return mu__boolexpr60;
 };
 
-bool mu__condition_61() // Condition for Rule "value is undefined while invalid"
+bool mu__condition_63() // Condition for Rule "modified and exclusive implies empty sharers list"
 {
-  return mu__invariant_58( );
+  return mu__invariant_59( );
 }
 
 /**** end rule declaration ****/
 
-int mu__invariant_62() // Invariant "Invalid implies empty owner"
+int mu__invariant_64() // Invariant "values in valid state match last write"
 {
-bool mu__boolexpr63;
-  if (!((mu_HomeNode.mu_state) == (mu_H_I))) mu__boolexpr63 = TRUE ;
+bool mu__quant65; 
+mu__quant65 = TRUE;
+{
+for(int mu_n = 1; mu_n <= 3; mu_n++) {
+bool mu__boolexpr66;
+bool mu__boolexpr67;
+  if ((mu_Procs[mu_n].mu_state) == (mu_P_M)) mu__boolexpr67 = TRUE ;
   else {
-  mu__boolexpr63 = (mu_HomeNode.mu_owner.isundefined()) ; 
+  mu__boolexpr67 = ((mu_Procs[mu_n].mu_state) == (mu_P_E)) ; 
 }
-return mu__boolexpr63;
+  if (!(mu__boolexpr67)) mu__boolexpr66 = TRUE ;
+  else {
+  mu__boolexpr66 = ((mu_Procs[mu_n].mu_val) == (mu_LastWrite)) ; 
+}
+if ( !(mu__boolexpr66) )
+  { mu__quant65 = FALSE; break; }
+};
+};
+return mu__quant65;
 };
 
-bool mu__condition_64() // Condition for Rule "Invalid implies empty owner"
+bool mu__condition_68() // Condition for Rule "values in valid state match last write"
 {
-  return mu__invariant_62( );
+  return mu__invariant_64( );
+}
+
+/**** end rule declaration ****/
+
+int mu__invariant_69() // Invariant "value in memory matches value of last write, when invalid"
+{
+bool mu__boolexpr70;
+  if (!((mu_HomeNode.mu_state) == (mu_H_I))) mu__boolexpr70 = TRUE ;
+  else {
+  mu__boolexpr70 = ((mu_HomeNode.mu_val) == (mu_LastWrite)) ; 
+}
+return mu__boolexpr70;
+};
+
+bool mu__condition_71() // Condition for Rule "value in memory matches value of last write, when invalid"
+{
+  return mu__invariant_69( );
+}
+
+/**** end rule declaration ****/
+
+int mu__invariant_72() // Invariant "value is undefined while invalid"
+{
+bool mu__quant73; 
+mu__quant73 = TRUE;
+{
+for(int mu_n = 1; mu_n <= 3; mu_n++) {
+bool mu__boolexpr74;
+  if (!((mu_Procs[mu_n].mu_state) == (mu_P_I))) mu__boolexpr74 = TRUE ;
+  else {
+  mu__boolexpr74 = (mu_Procs[mu_n].mu_val.isundefined()) ; 
+}
+if ( !(mu__boolexpr74) )
+  { mu__quant73 = FALSE; break; }
+};
+};
+return mu__quant73;
+};
+
+bool mu__condition_75() // Condition for Rule "value is undefined while invalid"
+{
+  return mu__invariant_72( );
+}
+
+/**** end rule declaration ****/
+
+int mu__invariant_76() // Invariant "Invalid implies empty owner"
+{
+bool mu__boolexpr77;
+  if (!((mu_HomeNode.mu_state) == (mu_H_I))) mu__boolexpr77 = TRUE ;
+  else {
+  mu__boolexpr77 = (mu_HomeNode.mu_owner.isundefined()) ; 
+}
+return mu__boolexpr77;
+};
+
+bool mu__condition_78() // Condition for Rule "Invalid implies empty owner"
+{
+  return mu__invariant_76( );
 }
 
 /**** end rule declaration ****/
 
 const rulerec invariants[] = {
-{"Invalid implies empty owner", &mu__condition_64, NULL, FALSE},
-{"value is undefined while invalid", &mu__condition_61, NULL, FALSE},
-{"value in memory matches value of last write, when invalid", &mu__condition_57, NULL, FALSE},
-{"values in valid state match last write", &mu__condition_54, NULL, FALSE},
-{"modified and exclusive implies empty sharers list", &mu__condition_49, NULL, FALSE},
-{"Invalid implies empty sharer list", &mu__condition_44, NULL, FALSE},
+{"Invalid implies empty owner", &mu__condition_78, NULL, FALSE},
+{"value is undefined while invalid", &mu__condition_75, NULL, FALSE},
+{"value in memory matches value of last write, when invalid", &mu__condition_71, NULL, FALSE},
+{"values in valid state match last write", &mu__condition_68, NULL, FALSE},
+{"modified and exclusive implies empty sharers list", &mu__condition_63, NULL, FALSE},
+{"Invalid implies empty sharer list", &mu__condition_58, NULL, FALSE},
+{"values in shared state match memory", &mu__condition_54, NULL, FALSE},
+{"values in memory matches value of last write, when shared or invalid", &mu__condition_49, NULL, FALSE},
+{"values in memory matches value of last write, when in P_E", &mu__condition_44, NULL, FALSE},
 {"values in shared state match memory", &mu__condition_40, NULL, FALSE},
-{"values in memory matches value of last write, when shared or invalid", &mu__condition_35, NULL, FALSE},
+{"values in shared state match memory", &mu__condition_35, NULL, FALSE},
 };
-const unsigned short numinvariants = 8;
+const unsigned short numinvariants = 11;
 
 /******************/
 bool mu__true_live() { return TRUE; }

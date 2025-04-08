@@ -1170,4 +1170,23 @@ invariant "values in memory matches value of last write, when shared or invalid"
 			HomeNode.val = LastWrite
 	end;
 
+invariant "values in memory matches value of last write, when in P_E"
+  Forall n : Proc Do	
+     Procs[n].state = P_E 
+    ->
+			HomeNode.val = LastWrite
+	end;
 
+invariant "values in shared state match memory"
+  Forall n : Proc Do	
+     HomeNode.state = H_O & Procs[n].state = P_S
+    ->
+			HomeNode.val = Procs[n].val
+	end;
+
+invariant "values in shared state match memory"
+  Forall n : Proc Do	
+     HomeNode.state = H_E & Procs[n].state = P_E
+    ->
+			HomeNode.val = Procs[n].val
+	end;
