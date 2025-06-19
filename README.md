@@ -1,5 +1,5 @@
 
-# README
+# README for MSI and MOESI Protocol (msi_opt)
 
 This repository contains two versions of the MSI protocol model:
 
@@ -32,7 +32,17 @@ To generate, build, and run the original MSI model, execute the following comman
 
    This command runs the simulation with test-verbose mode (`-tv`) using 1024 MB of memory (`-m 1024`), and outputs the results to `msi.out`.
 
-### Optimized MSI Version (msi_opt)
+### Optimized MSI Version MOESI Protocol (msi_opt)
+Building on the successful MSI model, I implemented the MOESI protocol which incorporates two additional stable states:
+* `Exclusive (E):` Indicates that a processor has the only valid copy of the block in a clean (unmodified) state.
+* `Owned (O):` Designates one cache as the owner for servicing shared requests while other caches maintain a valid copy. This state minimizes full directory lookups and reduces invalidation broadcasts.
+  
+In addition, multiple transient states are introduced on both the home node and processor sides. For example, states like `H_IE`, `H_MOD`, `H_OMA`, and others manage the handshaking and message delays that occur during transitions between stable states. Similarly, on the processor side, transient states such as `P_MIA`, `P_OMAC`, `P_OMA`, and others help ensure smooth upgrades from a shared to a modified state and a proper response to outstanding invalidation or acknowledgment messages.
+### Optimizations Over MSI:
+* The enhancements provided by the MOESI protocol lead to several key optimizations:
+Reduced Invalidation Traffic: By using the Exclusive state, the protocol avoids unnecessary invalidation messages when only one cache holds the data.
+* Efficient Handling of Dirty Data: The Owned state allows for a dirty block to be shared with other processors. Which lowers the coherence traffic. 
+* Improved Transition Handling: The new transient states allow for smoother and more robust state transitions, especially under conditions with overlapping requests or message reordering—thus eliminating potential race conditions and reducing the overall communication cost compared to the baseline MSI protocol.
 
 The optimized version, `msi_opt`, incorporates enhancements over the original MSI version. To generate, build, and run the optimized version, use:
 
