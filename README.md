@@ -32,7 +32,7 @@ To generate, build, and run the original MSI model, execute the following comman
 
    This command runs the simulation with test-verbose mode (`-tv`) using 1024 MB of memory (`-m 1024`), and outputs the results to `msi.out`.
 
-### Optimized MSI Version MOESI Protocol (msi_opt)
+### MOESI Protocol the Optimized MSI Version (msi_opt)
 Building on the successful MSI model, I implemented the MOESI protocol which incorporates two additional stable states:
 * `Exclusive (E):` Indicates that a processor has the only valid copy of the block in a clean (unmodified) state.
 * `Owned (O):` Designates one cache as the owner for servicing shared requests while other caches maintain a valid copy. This state minimizes full directory lookups and reduces invalidation broadcasts.
